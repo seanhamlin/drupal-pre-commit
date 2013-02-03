@@ -1,16 +1,19 @@
 #!/bin/sh
 #
-# This hook prevents you from committing any file containing debug
-# code. e.g. dsm(), dpm(), and console.log().
+# This hook prevents you from committing any file containing debug code.
+# e.g. dsm(), dpm(), alert() and console.log(). There is also a PHP LINT check
+# to ensure your syntax is okay.
 #
-# To enable this hook, symlink it (run this from the root of the
-# repository.
+# To enable this hook, symlink it (run this from the root of the repository).
 #
 # ln -s ../../scripts/pre-commit.sh .git/hooks/pre-commit
 #
-# ~/.bash_aliases
-# alias gc='git commit'
-# alias gcv='git commit --no-verify'
+# To force a commit that breaks the below rules (e.g. when debug code is 100%
+# required you can add in another parameter to `git commit` namely `--no-verify`.
+#
+# Helpful git aliases for these are:
+# git config --global alias.gc commit
+# git config --global alias.gcv commit --no-verify
  
 DIFF_FILES=`git diff-index HEAD --cached --name-only`
  
