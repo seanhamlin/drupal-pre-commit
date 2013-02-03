@@ -20,60 +20,96 @@ then
   exit 4
 fi
  
+# dsm() statement shoud not be committed, these run against PHP code only.
 for FILE in ${DIFF_FILES}
 do
-  grep -rin -C2 "dsm" "$FILE"
- 
-  if [ $? -ne 0 ]
-  then
-    false
-  else
-    echo "---------------------------------------"
-    echo "Found debug code - dsm() in file: $FILE"
-    exit 4
+  PARSEABLE=$(echo "$FILE" | grep -E "\.(php|module|install|inc)$");
+  if [ "$PARSEABLE" != "" ]; then
+    grep -rin -C2 "dsm" "$FILE"
+    if [ $? -ne 0 ]
+    then
+      false
+    else
+      echo "---------------------------------------"
+      echo "Found debug code - dsm() in file: $FILE"
+      exit 4
+    fi
   fi
 done
 
+# dpm() statement shoud not be committed, these run against PHP code only.
 for FILE in ${DIFF_FILES}
 do
-  grep -rin -C2 "dpm" "$FILE"
- 
-  if [ $? -ne 0 ]
-  then
-    false
-  else
-    echo "---------------------------------------"
-    echo "Found debug code - dpm() in file: $FILE"
-    exit 4
+  PARSEABLE=$(echo "$FILE" | grep -E "\.(php|module|install|inc)$");
+  if [ "$PARSEABLE" != "" ]; then
+    grep -rin -C2 "dpm" "$FILE"
+    if [ $? -ne 0 ]
+    then
+      false
+    else
+      echo "---------------------------------------"
+      echo "Found debug code - dpm() in file: $FILE"
+      exit 4
+    fi
   fi
 done
 
+# console.log() statement shoud not be committed, these run against JS code only.
 for FILE in ${DIFF_FILES}
 do
-  grep -rin -C2 "console\.log" "$FILE"
- 
-  if [ $? -ne 0 ]
-  then
-    false
-  else
-    echo "---------------------------------------"
-    echo "Found debug code - console.log() in file: $FILE"
-    exit 4
+  PARSEABLE=$(echo "$FILE" | grep -E "\.(js|coffee)$");
+  if [ "$PARSEABLE" != "" ]; then
+    grep -rin -C2 "console\.log" "$FILE"
+    if [ $? -ne 0 ]
+    then
+      false
+    else
+      echo "---------------------------------------"
+      echo "Found debug code - console.log() in file: $FILE"
+      exit 4
+    fi
   fi
 done
 
+# alert() statement shoud not be committed, these run against JS code only.
 for FILE in ${DIFF_FILES}
 do
-  grep -rin -C2 "alert(" "$FILE"
- 
-  if [ $? -ne 0 ]
-  then
-    false
-  else
-    echo "---------------------------------------"
-    echo "Found debug code - alert() in file: $FILE"
-    exit 4
+  PARSEABLE=$(echo "$FILE" | grep -E "\.(js|coffee)$");
+  if [ "$PARSEABLE" != "" ]; then
+    grep -rin -C2 "alert" "$FILE"
+    if [ $? -ne 0 ]
+    then
+      false
+    else
+      echo "---------------------------------------"
+      echo "Found debug code - alert() in file: $FILE"
+      exit 4
+    fi
   fi
 done
+
+# PHP LINT syntax checks, these run against PHP code only.
+for FILE in ${DIFF_FILES}
+do
+  PARSEABLE=$(echo "$FILE" | grep -E "\.(php|module|install|inc)$");
+  if [ "$PARSEABLE" != "" ]; then
+    php -l $FILE > /dev/null 2>&1
+    ERRORS=$?
+    if [ $ERRORS -eq 255 ]; then
+      ERROR_FILES="$ERROR_FILES $FILE"
+    fi
+  fi
+done
+if [ "$ERROR_FILES" != "" ]; then
+  echo "---------------------------------------"
+  echo "These errors were found in try-to-commit files: "
+  for ERROR_FILE in ${ERROR_FILES}
+  do
+    php -l $ERROR_FILE 2>&1 | grep "Parse error"
+  done
+  echo "---------------------------------------"
+  echo "Can't commit, fix errors first."
+  exit 4
+fi
  
 exit 0
