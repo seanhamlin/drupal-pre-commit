@@ -15,10 +15,18 @@
 # git config --global alias.gc commit
 # git config --global alias.gcv commit --no-verify
 
+# n.b. pwd is always the working copy's root directory.
+
 # Non-zero exit aborts the commit
 ABORT_COMMIT=1
 
-DIFF_FILES=$(git diff-index HEAD --cached --name-only)
+# Get the list of modified files, excluding deleted files (status 'D')
+# as obviously we cannot checkout and examine those.
+DIFF_FILES=$(git diff-index HEAD --cached --name-status | grep -v ^D | cut -f2-)
+
+# TODO: Test that when a SASS file is committed, the corresponding CSS
+# file is also committed, and that the CSS file was modified no less-
+# recently than the SASS file.
 
 if [ $? -ne 0 ]; then
   echo "Error getting list of changed files in pre-commit hook"
@@ -28,33 +36,32 @@ fi
 # Assume success.
 EXIT=0
 
-# n.b. pwd is always the working copy's root directory.
+# Make a directory, under which we will checkout the staged versions of the
+# files we are about to commit. We need to do this so that we are actually
+# testing the code which will be committed. (If we tested against the working
+# copy, we could have syntax errors in the staged version with inadvertantly-
+# unstaged fixes, and we wouldn't catch the problem.)
 STAGED=".validate_pre_commit"
 mkdir -p "$STAGED"
 # Truncate the LINT error log file
 LINTLOG="$STAGED/lint.log"
 >$LINTLOG
 
-# Note that we have to checkout the staged version of each file, so that
-# we are actually testing what is going to be committed!
-#
-# Otherwise (if we tested against the working copy) we could have syntax
-# errors in the staged version with inadvertantly-unstaged fixes, and we
-# wouldn't catch the problem.
-
 # PHP code checks.
 PHP_FILES="\.(php|module|install|inc)$"
+# Calls to debug functions should not be committed.
+# print_r() has valid uses with its optional $return argument,
+# so we do not test for it.
+# n.b. This regexp needs to be valid for both egrep & PHP's preg_match()
+FUNCTIONS="var_dump|dpq|dpm|dvm|dsm|dpr|kpr|dvr|kprint_r|dprint_r|devel_render|ddebug_backtrace|debug_backtrace|debug_print_backtrace"
+PATTERN="\b($FUNCTIONS)\("
+
 for FILE in ${DIFF_FILES}
 do
   PARSEABLE=$(echo "$FILE" | grep -E "$PHP_FILES");
   if [ "$PARSEABLE" != "" ]; then
     git checkout-index -f --prefix=$STAGED/ "$FILE"
 
-    # Calls to debug functions should not be committed.
-    # print_r() has valid uses with its optional $return argument,
-    # so we do not test for it.
-    # n.b. This regexp needs to be valid for both egrep & PHP's preg_match()
-    PATTERN='\b(var_dump|dpq|dpm|dvm|dsm|dpr|kpr|dvr|kprint_r|dprint_r|devel_render|ddebug_backtrace|debug_backtrace|debug_print_backtrace)\('
     # By initially matching against code which has been stripped of
     # comments, we can reliably eliminate any files which include only
     # commented calls to debug functions.
@@ -63,7 +70,7 @@ do
       # The output of php_strip_whitespace() is of no use for display
       # purposes, so we still need to grep the files; but we can at least
       # eliminate any //-style comments from the code before looking for
-      # the matches.
+      # matches to display.
       cat "$STAGED/$FILE" | sed 's|//.*||' | egrep -in -C2 "$PATTERN"
       echo "---------------------------------------"
       echo "^ Found PHP debug code in $FILE"
@@ -73,8 +80,7 @@ do
 
     # PHP LINT syntax checks.
     php -l "$STAGED/$FILE" >>$LINTLOG 2>&1
-    ERRORS=$?
-    if [ $ERRORS -eq 255 ]; then
+    if [ $? -eq 255 ]; then
       ERROR_FILES="$ERROR_FILES $FILE"
     fi
 
@@ -83,16 +89,17 @@ do
 done
 
 # Javascript code checks.
-# Calls to the following functions should not be committed:
-# alert, console.log.
+JS_FILES="\.(js|coffee)$"
+# Calls to debug functions should not be committed.
+FUNCTIONS="console\.log|alert"
+PATTERN="\b($FUNCTIONS)\("
+
 for FILE in ${DIFF_FILES}
 do
-  PARSEABLE=$(echo "$FILE" | grep -E "\.(js|coffee)$");
+  PARSEABLE=$(echo "$FILE" | grep -E "$JS_FILES");
   if [ "$PARSEABLE" != "" ]; then
     git checkout-index -f --prefix=$STAGED/ "$FILE"
 
-    # Calls to debug functions should not be committed.
-    PATTERN="\b(console\.log|alert)\("
     # As with the PHP tests, we can strip comments from the code before
     # grepping for the function calls, to avoid displaying false-positives.
     cat "$STAGED/$FILE" | sed 's|//.*||' | egrep -in -C2 "$PATTERN"
