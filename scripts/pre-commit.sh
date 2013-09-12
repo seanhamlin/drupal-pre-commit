@@ -53,7 +53,7 @@ PHP_FILES="\.(php|module|install|inc)$"
 # print_r() has valid uses with its optional $return argument,
 # so we do not test for it.
 # n.b. This regexp needs to be valid for both egrep & PHP's preg_match()
-FUNCTIONS="var_dump|dpq|dpm|dvm|dsm|dpr|kpr|dvr|kprint_r|dprint_r|devel_render|ddebug_backtrace|debug_backtrace|debug_print_backtrace"
+FUNCTIONS="var_dump|dpq|dpm|dvm|dsm|dpr|kpr|dvr|kprint_r|dprint_r|devel_render|ddebug_backtrace|debug_backtrace|debug_print_backtrace|debug_to_file"
 PATTERN="\b($FUNCTIONS)\("
 
 for FILE in ${DIFF_FILES}
