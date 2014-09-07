@@ -125,7 +125,7 @@ if [ "$ERROR_FILES" != "" ]; then
 fi
 
 if [ $EXIT -ne 0 ]; then
-  echo "\nCan't commit; fix errors first."
+  echo "\ngit: Can't commit; fix errors first."
   echo "(If you definitely need to commit this as-is, use the --no-verify option.)"
   echo "\nIf the reported line numbers do not match, try stashing your unstaged changes:"
   echo "git stash save --keep-index\n"
